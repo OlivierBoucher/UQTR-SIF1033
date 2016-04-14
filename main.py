@@ -9,6 +9,9 @@ import cv2, sys, os
 
 faces_classifier = cv2.CascadeClassifier("haarcascade_frontalface_alt.xml")
 eyes_classifier = cv2.CascadeClassifier("haarcascade_eye.xml")
+mouth_classifier = cv2.CascadeClassifier("haarcascade_mouth.xml")
+nose_classifier = cv2.CascadeClassifier("haarcascade_nose.xml")
+
 cap = cv2.VideoCapture("meunier.mov")
 
 skip = 0
@@ -66,8 +69,21 @@ while cap.isOpened():
                               (0, 255, 0), 2)
                 cv2.rectangle(face, (right_eye[0], right_eye[1]),
                               (right_eye[0] + right_eye[2], right_eye[1] + right_eye[3]), (0, 255, 0), 2)
-            else:
-                print 'No eyes detected'
+
+            # NOTE(Olivier): Find the mouth
+            mouths = mouth_classifier.detectMultiScale(gray)
+            mouths_candidate = []
+            for (mx, my, mw, mh) in mouths:
+                # NOTE(Olivier): The position must be near the bottom of the image and the width must a least be 30 pixels
+                if my > h / 1.55 and mw > 30:
+                    mouths_candidate.append((mx, my, mw, mh))
+            # NOTE(Olivier): Sort he candidates based on their y position
+            mouths_candidate.sort(key=lambda mouth: mouth[1], reverse=True)
+
+            # NOTE(Olivier): If we found a matching candidate, we display a rectangle over it
+            if len(mouths_candidate) > 0:
+                mouth = mouths_candidate[0]
+                cv2.rectangle(face, (mouth[0], mouth[1]), (mouth[0] + mouth[2], mouth[1] + mouth[3]), (255, 0, 0), 2)
 
             cv2.imshow("face", face)
 
