@@ -1,8 +1,9 @@
-# Travail pratique 2 - SIF1033
+# Travail pratique 4 - SIF1033
 # Olivier Boucher
 # Catherine Beliveau
 # Joel Gbalou
 # Maxime Rioux
+# Guillaume Baudisson
 
 import numpy as np
 import cv2, sys, os
@@ -12,7 +13,8 @@ eyes_classifier = cv2.CascadeClassifier("haarcascade_eye.xml")
 mouth_classifier = cv2.CascadeClassifier("haarcascade_mouth.xml")
 nose_classifier = cv2.CascadeClassifier("haarcascade_nose.xml")
 
-cap = cv2.VideoCapture("C:\\Users\\baudisso\\Desktop\\UQTR-SIF1033\\meunier.mp4")
+# NOTE(Olivier): You might need an absolute URL on Windows...
+cap = cv2.VideoCapture("video.mov")
 
 btw_puppils_ratios = []
 btw_eyes_ratios = []
@@ -22,14 +24,18 @@ face_absence_cnt = 0
 last_detection_was_successful = False
 frames_elapsed = 0l
 
+cv_size = lambda img: tuple(img.shape[1::-1])
+
 while cap.isOpened():
     ret, frame = cap.read()
     frames_elapsed += 1
-    faces = faces_classifier.detectMultiScale(frame, 1.3, 4)
+    faces = faces_classifier.detectMultiScale(frame, 1.2, 4)
+
+    (frame_h, frame_w) = cv_size(frame)
 
     # NOTE(Olivier): Provide a minimum width to eliminate noise
-    # TODO(Olivier): Adjust from hardcoded values to percentage from frame size
-    faces = filter(lambda l: l[2] > 100 and l[3] > 100, faces)
+    # NOTE(Olivier): Face must take 50% of image
+    faces = filter(lambda l: float(l[2])/float(frame_w) > 0.2 and float(l[3])/float(frame_h) > 0.2, faces)
 
     if len(faces) == 0:
         face_absence_cnt += 1
@@ -86,7 +92,7 @@ while cap.isOpened():
             if (h * 0.25) < ny < (h * 0.75):
                 if (w * 0.25) < nx < (w * 0.75):
                     # NOTE(Olivier): Assign some sort of rank based on position from center of the face
-                    indice = abs((w/2)-nx) + abs((h/2)-ny)
+                    indice = abs((w/2) - (nx + (nw/2))) + abs((h/2) - (ny + (nh/2)))
                     nose_candidates.append(((nx, ny, nw, nh), indice))
 
         # NOTE(Olivier): Sort based on distance from the center
@@ -137,7 +143,16 @@ while cap.isOpened():
             avg_nose_mouth = reduce(lambda n, m: n+m, nose_to_mouth_ratios)/len(nose_to_mouth_ratios) if len(nose_to_mouth_ratios) > 15 else 0
 
             if avg_nose_mouth > 0:
-                print '[' + str(frames_elapsed/29) + ' seconds in] Nose to mouth: ' + str(avg_nose_mouth) + ' | Eyes: ' + str(avg_eyes_ratio) + ' | Puppils: ' + str(avg_puppils_ratio)
+                if avg_eyes_ratio == 0 and avg_puppils_ratio == 0:
+                    if avg_nose_mouth > 0.66:
+                        print '[' + str(frames_elapsed/29) + ' seconds in] Detected Francois'
+                    else:
+                        print '[' + str(frames_elapsed/29) + ' seconds in] Detected Benny'
+                else:
+                    if avg_nose_mouth > 0.75:
+                        print '[' + str(frames_elapsed/29) + ' seconds in] Detected Francois'
+                    else:
+                        print '[' + str(frames_elapsed/29) + ' seconds in] Detected Benny'
 
             # Reset the average counters
             last_detection_was_successful = True
